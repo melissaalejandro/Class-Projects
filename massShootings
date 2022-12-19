@@ -1,0 +1,376 @@
+library(earth); library(caret)
+library(corrplot); library(ggplot2)
+library(tidyverse)
+library(e1071)
+library(plm) 
+library(tseries)
+library(kableExtra) # for data frame
+library(sjPlot); library(sjmisc); library(sjlabelled) # for reg output
+
+all0 = read.csv('https://raw.githubusercontent.com/melissaalejandro/Class-Projects/main/all.csv')
+
+
+# ---------------------------------------------------------------
+
+# Check for normal distribution ----
+shapiro.test(all0$population)
+shapiro.test(all0$total_shootings)
+shapiro.test(all0$lawtotal)
+shapiro.test(all0$shootings_per100k)
+
+# overview of relevant variables
+par(mfrow=c(2,2))
+hist(all0$total_shootings,
+     col='deepskyblue',
+     main = 'Total Shootings, Pre Transformation')
+hist(all0$shootings_per100k,
+     col='deepskyblue',
+     xlab='Shootings per 100k People',
+     main = 'Shootings per 100k People, Pre Transformation')
+hist(all0$population,
+     col='deepskyblue',
+     main = 'Population, Pre Transformation')
+hist(all0$lawtotal,
+     col='deepskyblue',
+     xlab= 'Total Laws',
+     main = 'Law Total, Pre Transformation')
+
+
+# Transform using logs----
+
+allLog = all0
+
+allLog$total_shootings = log(allLog$total_shootings)
+
+allLog$population = log(allLog$population)
+
+allLog$lawtotal = log(allLog$lawtotal)
+
+allLog$shootings_per100k = (allLog$total_shootings/(allLog$population))*100000
+
+# See data post transformation
+par(mfrow=c(2,2))
+hist(all0$shootings_per100k,
+     col='deepskyblue',
+     xlab='Shootings per 100k People',
+     main = 'Shootings per 100k People, Pre Transformation')
+hist(all0$lawtotal,
+     col='deepskyblue',
+     xlab= 'Total Laws',
+     main = 'Law Total, Pre Transformation')
+hist(allLog$shootings_per100k,
+     col='deepskyblue',
+     xlab='Shootings per 100k People',
+     main = 'Log of Shootings per 100k People, Post Transformation')
+hist(allLog$lawtotal,
+     col='deepskyblue',
+     xlab='Total Laws',
+     main = 'Log of Law Total, Post Transformation')
+dev.off()
+
+# Check again for normality
+shapiro.test(allLog$population)
+shapiro.test(allLog$total_shootings)
+shapiro.test(allLog$lawtotal)
+shapiro.test(allLog$shootings_per100k)
+
+# Test for stationarity
+adf.test(allLog$shootings_per100k,k=3)#p-value = 0.01 (stationary)
+adf.test(allLog$lawtotal, k=3)# p-value = 0.01 (stationary)
+
+# rm unnecessary variables
+allLog = allLog[,-c(3:5)]
+
+
+# ================================================
+# Data Exploration ----
+# ================================================
+
+# Scatterplot - Mass Shootings and Laws
+ggplot(allLog, aes(x=lawtotal, 
+                   y=shootings_per100k)) + 
+  geom_point(aes(color=state)) +
+  geom_smooth(method="auto", se=TRUE, fullrange=TRUE, level=0.95) + 
+  ggtitle("Total Laws and Mass Shootings by state")+ 
+  labs(y= "Shootings per 100k People", x = "Total Laws")
+
+
+library(GGally)
+lowerFn <- function(data, mapping, method = "lm", ...) {
+  p <- ggplot(data = data, mapping = mapping) +
+    geom_point(colour = "black") +
+    geom_smooth(method = method, color = "red", ...)
+  p
+}
+
+ggpairs(data=allLog, 
+        columns=c(4,3), 
+        title="Shootings and Total Laws Scatterplot Matrix", 
+        lower = list(continuous = wrap(lowerFn, method = "lm")),
+        diag = list(continuous = wrap("barDiag", color = "black", fill='deepskyblue')),
+        upper = list(continuous = wrap("cor", size = 10, color='black')))
+
+
+
+# statistics ----
+# get mean and sd of all variables
+statistics <- sapply(allLog[,-c(1:2)], function(x) c(mean = mean(x),sd = sd(x)))
+statistics = data.frame(statistics)
+statistics = round(statistics,3)
+
+# kbl 
+statistics %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F) %>% 
+  row_spec(0, color='black', background = "steelblue") %>% 
+  column_spec(1, background = "lightgray")
+
+
+
+
+# ================================================
+# Initial regression ----
+# ================================================
+
+reg0=lm(shootings_per100k~., data = allLog)
+summary(reg0) # mass shootings per each law: 0.0142919, p=0.078955 . not statistically significant
+
+
+# ================================================
+# Remove highly correlated variables ----
+# ================================================
+
+# rm variables with NA'S ----
+rmColNA = c('violentpartial',
+            'reportall',
+            'residential',
+            'inspection',
+            'permitlaw',
+            'registration',
+            'registrationh',
+            'defactoregh',
+            'age18longgunsale',
+            'age21longgunsale',
+            'age18longgunpossess',
+            'age21longgunpossess',
+            'amm18',
+            'gunshowh',
+            'universalpermit',
+            'ammbackground',
+            'mentalhealth',
+            'waiting',
+            'assault',
+            'assaultlist',
+            'assaulttransfer',
+            'magazine',
+            'tenroundlimit',
+            'traffickingbackground',
+            'strawpurchase',
+            'college',
+            'opencarryl',
+            'opencarrypermitl',
+            'personalized',
+            'lockp',
+            'locked',
+            'lockstandards',
+            'capunloaded',
+            'cap16',
+            'cap14',
+            'junkgun',
+            'liability',
+            'immunity',
+            'preemptionbroad',
+            'mcdvsurrendernoconditions',
+            'incidentremoval',
+            'incidentall',
+            'expartesurrendernoconditions',
+            'expartesurrenderdating',
+            'dvroremoval')
+
+all = allLog[,!names(allLog)%in%rmColNA]
+
+## Find remaining higly correlated vars #######
+sub = all[5:93]
+highCorr <- findCorrelation(cor(sub), .7, names = T) #0.70=threshold
+highCorr
+
+# remove columns in highCorr and remove_cols
+all = all[ , !names(all) %in% c(highCorr)] 
+
+reg = lm(shootings_per100k~., data = all) 
+summary(reg) # law: -1.434e+03    p=0.515096
+
+
+# check for highly correlated variables again
+sub2 = all[5:62]
+highCorr2 <- findCorrelation(cor(sub2), .7, names = T) 
+highCorr2
+
+
+# Now that we've removed all highly correlated variables, we can check for variable importance.
+
+# check variable importance  #######
+sub2.2=all[3:62]
+regressor <- earth(shootings_per100k ~ . , data= sub2.2) # build model
+ev <- evimp(regressor) # estimate variable importance
+plot(ev)
+evdf = as.data.frame(unclass(ev))
+evdf = evdf %>% rownames_to_column(var = 'law')
+
+# create df of all variables not in evdf
+notINevdf = all[!names(all) %in% evdf$law]
+names(notINevdf)
+
+# keep needed or interesting variables (state, year, shootings_per100k, felony,permitconcealed)
+notINevdf = notINevdf[,-c(1:4, 34)]
+
+names(notINevdf)
+
+# keep variables that are not in 'notINevdf'
+all2 = all[, !names(all) %in% names(notINevdf)]
+names(all2)
+
+evdf$law
+# rm unused
+rmUnused = c('alcoholism',
+             'threedaylimit',
+             'relinquishment',
+             'magazinepreowned',
+             'ammlicense',
+             'age21handgunpossess',
+             'reportdealerh',
+             'traffickingprohibitedh')
+
+all2 = all2[, !names(all2) %in% rmUnused]
+names(all2)
+
+
+# visual correlation plot ----
+corrplot(cor(all2[,-c(1:4)]), method="color", type = 'full', order = 'hclust', tl.col="black", tl.cex = .35, tl.srt=45, addCoef.col = 'black',number.cex=0.6)
+
+# run new regression after removing variables
+reg2 = lm(shootings_per100k ~ ., all2)
+summary(reg2) # statistically significant lawtotal            
+#-4.073e+03  p = 0.008722 ** 
+
+# regression with important variables only
+reg2Imp =lm(shootings_per100k ~ factor(state)+factor(year)+
+              mcdvsurrender+
+              nosyg+
+              ccbackgroundnics+
+              gvrolawenforcement+
+              capaccess+
+              security+
+              loststolen+
+              drugmisdemeanor+
+              strawpurchaseh+
+              dvro+
+              lawtotal+
+              ccrevoke+
+              mcdvremovalallowed+
+              elementary+
+              onefeature+
+              mcdv+
+              recordsdealer+
+              dvrodating+
+              danger, all2)
+summary(reg2Imp) #-2293.26 p=0.065713 .
+
+
+# check adjusted r2 of all models
+summary(lm(shootings_per100k~., data = allLog))$adj.r.squared
+summary(lm(shootings_per100k~., data = all))$adj.r.squared
+summary(lm(shootings_per100k~., data = all2))$adj.r.squared
+summary(reg2Imp)$adj.r.squared
+
+
+# =============================================
+# Poisson Rgression
+# =============================================
+
+# SEPARATE INTO QUARTILES ##############################
+quarts <- all2 %>% mutate(tiles = ntile(-shootings_per100k, 4)) %>% relocate(tiles, .after = shootings_per100k)  
+
+quarts$shootings_per100k = round(quarts$shootings_per100k,0)
+
+quartsNT = quarts[-4]
+
+
+TPoissonNT <- glm(shootings_per100k ~ ., family="poisson", data=quartsNT)
+summary(TPoissonNT) # -5.183e-01 p = < 2e-16 ***
+
+TPoissonAllNT <- glm(shootings_per100k~ factor(state)+factor(year)+
+                    lawtotal+
+                    felony+
+                    danger+
+                    drugmisdemeanor+
+                    recordsdealer+
+                    security+
+                    loststolen+
+                    onefeature+
+                    strawpurchaseh+
+                    gvrolawenforcement+
+                    elementary+
+                    permitconcealed+
+                    ccbackgroundnics+
+                    ccrevoke+
+                    nosyg+
+                    capaccess+
+                    mcdv+
+                    mcdvsurrender+
+                    mcdvremovalallowed+
+                    dvro+
+                    dvrodating,
+                  family="poisson", data=quartsNT)
+summary(TPoissonAllNT) # -0.318629 p= < 2e-16 ***
+
+TPoisson2NT <- glm(shootings_per100k~ factor(state)+factor(year)+
+                  lawtotal+
+                  loststolen+
+                  elementary+
+                  permitconcealed+
+                  ccrevoke, 
+                family="poisson", data=quartsNT)
+summary(TPoisson2NT) # -0.229964  p= < 2e-16 ***
+
+# create table with regression output
+tab = tab_model(TPoisson2NT, 
+                show.se = TRUE, 
+                show.ci = F, 
+                show.stat = TRUE, 
+                show.fstat = TRUE,
+                CSS = list(
+                  css.centeralign = 'text-align: left;',
+                  css.firsttablecol = 'font-weight: bold;'
+  ))
+
+tab$page.complete <- gsub("Statistic","t-value",
+                     gsub('std. Error', 'std.Error',
+                     tab$page.complete))
+tab
+
+
+
+# =============================================
+# Find median number of laws in each tile ----
+# =============================================
+
+q1 = subset(quarts, tiles==1)
+q2 = subset(quarts, tiles==2) 
+q3 = subset(quarts, tiles==3)
+q4 = subset(quarts, tiles==4)
+
+data.frame( q1=median(q1$lawtotal),
+q2 = median(q2$lawtotal),
+q3 = median(q3$lawtotal),
+q4 = median(q4$lawtotal), row.names = 'Median Laws')%>%
+  kbl() %>%
+  kable_paper("hover", full_width = F) %>% 
+  row_spec(0, color='black')
+
+
+
+
+
+
+
