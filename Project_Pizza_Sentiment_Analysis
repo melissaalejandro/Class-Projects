@@ -1,0 +1,328 @@
+#detach all loaded packages
+invisible(lapply(paste0('package:', names(sessionInfo()$otherPkgs)), detach, character.only=TRUE, unload = F))
+
+
+#https://www.yelp.com/biz/24th-st-pizzeria-san-antonio?osq=Worst+Restaurant
+#install.packages("quanteda")
+#install.packages("quanteda.textstats")
+#install.packages("quanteda.textplots")
+library(rvest)
+library(tidyverse)
+library(tidytext)
+library(ggplot2) 
+library(plotly)
+library(kableExtra)
+library(quanteda) 
+library(quanteda.textstats)
+library(quanteda.textplots)
+
+# Create url object -------------------------------
+url = "https://www.yelp.com/biz/24th-st-pizzeria-san-antonio?osq=Worst+Restaurant"
+
+# Convert url to html object ----------------------
+page <- read_html(url)
+
+# Number of pages ---------------------------------
+pageNums = page %>%
+  html_elements(xpath = "//div[@class=' border-color--default__09f24__NPAKY text-align--center__09f24__fYBGO']") %>%
+  html_text() %>%
+  str_extract('of.*') %>% 
+  str_remove('of ') %>% 
+  as.numeric() 
+
+
+# Create page sequence ----------------------------
+pageSequence <- seq(from=0, to=(pageNums * 10)-10, by = 10)
+
+# Create empty vectors to store data --------------
+review_date_all = c()
+review_rating_all = c()
+review_text_all = c()
+
+# Create for loop ---------------------------------
+for (i in pageSequence){
+  if (i==0){
+    page <- read_html(url) 
+  } else {
+    page <- read_html(paste0(url, '&start=', i))
+  }
+  
+  # Review date 
+  review_dates <- page %>%
+    html_elements(xpath = "//*[@class=' css-chan6m']") %>%
+    html_text() %>%
+    .[str_detect(., "^\\d+[/]\\d+[/]\\d{4}$")]
+  
+  # Review Rating 
+  review_ratings <- page %>%
+    html_elements(xpath = "//div[starts-with(@class, ' review')]") %>%
+    html_elements(xpath = ".//div[contains(@aria-label, 'rating')]") %>%
+    html_attr('aria-label') %>%
+    str_remove('rating')
+  
+  # Review text 
+  review_text = page %>%
+    html_elements(xpath = "//p[starts-with(@class, 'comment')]") %>%
+    html_text()
+  
+  # For each page, append to appropriate vectors
+  review_date_all = append(review_date_all, review_dates)
+  review_rating_all = append(review_rating_all, review_ratings)
+  review_text_all = append(review_text_all, review_text)
+}
+
+# Create data frame -------------------------------
+df <- data.frame('Date' = review_date_all,
+                 'Rating' = review_rating_all,
+                 'Text'= review_text_all)
+View(df)
+
+
+
+# ==================================================================
+# Table of star ratings ----
+# ==================================================================
+
+table(df['Rating'])
+allStars <- data.frame(table(df$Rating))
+names(allStars)[1] <- "Rating" #change column 1 name
+names(allStars)[2] <- "Frequency" #change column name
+allStars$Rating = as.numeric(sub(" .*", "", allStars$Rating))
+
+# overview of ratings in bargraph using ggplot2 and plot_ly
+ggplot(data=allStars, aes(x=Rating, y=Frequency)) +
+  geom_bar(stat="identity", color="black", fill="#DD8888") +ggtitle("Rating Overview")  +
+  theme(plot.title = element_text(hjust = 0.5))
+
+plot_ly(data = allStars, x = ~Rating, y = ~Frequency, type = "bar",
+               color = "orange")  %>% layout(title = 'Rating Overview')
+
+# percentage of each review
+percent <- data.frame(percentage=round(allStars$Frequency / sum(allStars$Frequency) * 100,2),
+                      rating = c("1 star", '2 star', '3 star', '4 star', '5 star'))
+# nice data frame
+percent %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F) %>% 
+  row_spec(0, color='black') 
+
+# ==================================================================
+# Distribution of emotion categories ----
+# ==================================================================
+
+tokens <- data.frame(text = df$Text) %>% unnest_tokens(word, text)
+
+sentToks = tokens %>%
+  inner_join(get_sentiments("bing")) %>% # pull out only sentiment words
+  count(sentiment) %>% # count the # of positive & negative words
+  spread(sentiment, n, fill = 0) %>% # made data wide rather than narrow
+  mutate(sentiment = positive - negative) # # of positive words - # of negative words
+
+sentToks = data.frame(count=t(sentToks), emotion=names(sentToks), row.names = NULL)
+
+plot_ly(sentToks, x=~emotion, y=~count, type="bar", color=~emotion) %>%
+  layout(xaxis=list(title=""), showlegend=FALSE,
+         title="Distribution of emotion categories")
+
+# ==================================================================
+# Corpus and Tokenize 
+# ==================================================================
+
+### Change to corpus format using 'Text' column ####
+reviews_corpus <- corpus(df, text_field = "Text")
+head(reviews_corpus)
+
+# Group corpus by rating and summarize 
+reviews_corpus_info <- summary(reviews_corpus)
+
+reviews_corpus_info %>% 
+  group_by(Rating) %>% 
+  summarise(no_of_tokens = sum(Tokens))
+
+
+#### Split each doc (review) into words (tokens) ####
+reviews_tokens <- tokens(reviews_corpus, 
+                         remove_punct = TRUE,
+                         remove_symbols = TRUE,
+                         remove_numbers = TRUE)
+head(reviews_tokens)
+
+
+# ==================================================================
+# Analyze frequency of most used words ----
+# ==================================================================
+
+#### Remove stop words ####
+reviews_dfm <- dfm(reviews_tokens,) %>% 
+  dfm_remove(stopwords("english")) %>% 
+  dfm_group(groups = Rating)
+head(reviews_dfm)
+
+text_freq <- textstat_frequency(reviews_dfm)
+head(text_freq)
+
+# Remove stop & uninteresting words 
+final_reviews_dfm <- dfm(reviews_tokens,tolower = TRUE) %>%
+  dfm_remove(c(stopwords("english"), "pizza", "order", "place", "delivery", "hotel", "called", "food", "said", "just", "back", "give", "got", "get", "like", "even", "ever",  "us", "know", "ordered", "said", "reviews", "told", 'business', 'restaurant')) %>%
+  dfm_group(groups = Rating)
+
+#### Most used words ####
+final_text_freq <- textstat_frequency(final_reviews_dfm)
+head(final_text_freq)
+
+#### Plot the 20 most frequent words ####
+final_reviews_dfm %>% 
+  textstat_frequency(n=20) %>% 
+  ggplot(aes(x = reorder(feature, frequency), y = frequency)) + 
+  geom_point() + 
+  coord_flip() + 
+  labs(x = NULL, y = "Frequency") + 
+  theme_minimal()
+
+### Word cloud: Most common words ####
+set.seed(42)
+textplot_wordcloud(final_reviews_dfm, min_count = 10, 
+                   color = RColorBrewer::brewer.pal(8, name = "Dark2"))
+
+
+
+#### Five star analysis ####
+five <- df %>%
+  filter(Rating == '5 star ')
+
+five_corpus <- corpus(five, text_field = "Text")
+
+five_tokens <- tokens(five_corpus, remove_punct = TRUE, remove_symbols = TRUE, remove_numbers = TRUE)
+
+five_dfm <- dfm(five_tokens, tolower = TRUE) %>% 
+  dfm_remove(c(stopwords("english"), "pizza", "ordered", 'see', 'also', 'even', 'just', 'got', 'pizzeria', 'like', 'trying', 'reviews')) %>%  
+  dfm_group(groups = Rating)
+
+five_freq <- textstat_frequency(five_dfm)
+head(five_freq)
+
+#### One star analysis ####
+one <- df %>%
+  filter(Rating == '1 star ')
+
+one_corpus <- corpus(one, text_field = "Text")
+
+one_tokens <- tokens(one_corpus, remove_punct = TRUE, remove_symbols = TRUE, remove_numbers = TRUE)
+
+one_dfm <- dfm(one_tokens, tolower = TRUE) %>% 
+  dfm_remove(c(stopwords("english"), "pizza", "order", "place", "delivery", "hotel", "called", "food", "said", "just", "back", "give", "got", "get", "like", "even", "ever",  "us", "know", "ordered", "said", "reviews", "told")) %>%  dfm_group(groups = Rating)
+
+one_freq <- textstat_frequency(one_dfm)
+head(one_freq)
+
+set.seed(42)
+textplot_wordcloud(one_dfm, min_count = 10, color = RColorBrewer::brewer.pal(10, "Dark2"))
+
+
+#### One and five analysis ####
+
+# Remove the whitespace and create a dataframe with the following.
+library(stringr)
+
+df2 <- df %>% # Create data frame with only 1 & 5 star reviews 
+  mutate(Rating = str_squish(Rating)) %>%
+  filter(Rating == '5 star' | Rating == '1 star')
+
+one_and_five_corpus <- corpus(df2, text_field = "Text")
+
+one_and_five_tokens <- tokens(one_and_five_corpus, remove_punct = TRUE, remove_symbols = TRUE, remove_numbers = TRUE)
+
+one_and_five_dfm <- dfm(one_and_five_tokens, tolower = TRUE) %>% 
+  dfm_remove(c(stopwords("english"), "pizza", "order", "place", "delivery", "called", "food", "said", "just", "back", "give", "got", "get", "like", "even", "ever",  "us", "know", "ordered", "said", "reviews", "told")) %>%  dfm_group(groups = Rating)
+head(one_and_five_dfm)
+
+set.seed(42)
+textplot_wordcloud(one_and_five_dfm, comparison = TRUE, min_count = 8, color = RColorBrewer::brewer.pal(7, "Set1"))
+
+
+# ==================================================================
+# Sentiment Analysis ----
+# ==================================================================
+
+# User Sentiment Scores (sentimentr) --------------
+library(sentimentr)
+sentiment_scores <- sentiment_by(df$Text)
+
+# check for missing values
+cbind(lapply(lapply(sentiment_scores, is.na), sum))
+# replace NA's with mean value
+sentiment_scores <- sentiment_scores %>% 
+  mutate_if(is.numeric, function(x) ifelse(is.na(x), mean(x, na.rm = T), x))
+summary(sentiment_scores$ave_sentiment)
+
+sentiment_scores_df <- sentiment_scores # change Sentiment Scores to df
+sentiment_scores_df$Rating <- df$Rating # add rating column
+sentiment_scores_df$element_id <- NULL # delete element_id col
+View(sentiment_scores_df)
+sentiment_scores_df %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F) %>% 
+  row_spec(0, color='black') 
+
+# Plot density of sentiment -----------------------
+dat <- with(density(sentiment_scores_df$ave_sentiment), data.frame(x, y))
+
+ggplot(dat, aes(x = x, y = y)) +
+  geom_line() +
+  geom_area(mapping = aes(x = ifelse(x >=0 & x<=1 , x, 0)), fill = "green") +
+  geom_area(mapping = aes(x = ifelse(x <=0 & x>=-1 , x, 0)), fill = "red") +
+  scale_y_continuous(limits = c(0,3)) + labs(x = "Sentiment", 
+                                             y = "", 
+                                             title = "The Distribution of Sentiment Across Reviews", 
+                                             axis.text.y=element_blank())
+
+
+
+# Different methods for getting sentiment ----
+library(syuzhet)
+sentReviews <- iconv(df$Text)
+syuzhet <- get_sentiment(sentReviews, method="syuzhet")
+bing <- get_sentiment(sentReviews, method="bing")
+afinn <- get_sentiment(sentReviews, method="afinn")
+nrc <- get_sentiment(sentReviews, method="nrc")
+
+# Compare different methods for getting sentiment ----
+sentiments <- data.frame(syuzhet, bing, afinn, nrc, sentiment_scores)
+View(sentiments)
+sentiments <- sentiments[-(5:7)] # remove columns 5:7
+names(sentiments)[5] <- "sentimentr" #change column name
+sentiments$sentimentr <- round(sentiments$sentimentr,2)
+sentiments %>%
+  kbl() %>%
+  kable_paper("hover", full_width = F) %>% 
+  row_spec(0, color='black') 
+
+
+# Get sentiment average for all columns
+colMeans(sentiments[sapply(sentiments, is.numeric)])%>%
+  kbl() 
+
+# column median
+sentiments %>% summarise_at(vars("syuzhet","bing","afinn", 'nrc', 'sentimentr'),median) %>% 
+  kbl() %>%
+  kable_paper("hover", full_width = T)
+
+
+# ==================================================================
+# Polarity words ----
+# ==================================================================
+library(magrittr)
+library(qdap)
+df$Text = gsub('[[:punct:] ]+',' ',df$Text) # remove punctuation
+(polar = df %$% polarity(Text, grouping.var = Rating, n.before = 4, n.after = 4))
+plot(polar)
+head(polar)
+d=counts(polar) # df of pos and neg words
+
+
+
+
+
+
+
+
