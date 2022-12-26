@@ -12,6 +12,6 @@ Analyzing why a local restaruant has one-star reviews using sentiment analysis. 
 
 ### Mass Shootings
 
-Regression that utilizes the OLS and Poisson regressions to analyze whether more gun laws lead to more mass shootings
+Analysis that utilizes the OLS and Poisson regressions to determine whether more gun laws lead to more mass shootings
 
 
