@@ -31,7 +31,7 @@ How they feel about the restaurant matches up with the average sentiment
 
 - Invest in a pizza box warmer so that food does not arrive cold
 
-**Positive Factors**
+**Positive Factors:**
 The food is excellent when it is cooked and warm!
 
 
