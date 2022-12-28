@@ -39,4 +39,10 @@ The food is excellent when it is cooked and warm!
 
 Analysis that utilizes the OLS and Poisson regressions to determine whether more gun laws lead to more mass shootings
 
+### Testing the Philip's Curve using time-series analysis
+
+  The purpose of this project was to test the relationship between unemployment and inflation (Philip's curve theory), which states that there is an inverse relationship between inflation and unemployment. The Philip's curve describes how lower unemployment means that people spend more. When people spend more, pressure is placed on prices to rise, consequently leading to inflation. The opposite is also true: inflation will be lower during times of high unemployment due to reduced spending. We test the Phillips Curve theory using time series data to examine the short and long-run relationship between inflation and unemployment.
+
+	Overall, the data is consistent with the notion that inflation and unemployment are inversely related. One exciting aspect of this analysis was learning that inflation causes unemployment, but not the other way around. From the Phillips Curve theory, we also expected unemployment to affect inflation. 
+
 
