@@ -23,10 +23,13 @@ How they feel about the restaurant matches up with the average sentiment
 
 * Recommended Improvements: *
 
-Retrain existing staff on customer service or rehire completely new staff
-Hire more staff. Many times, food arrived hours after placing an order. It would be beneficial to hire more drivers to get food to customers more quickly
-Retrain staff on how to operate machinery correctly so that food is not overcooked 
-Invest in a pizza box warmer so that food does not arrive cold
+- Retrain existing staff on customer service or rehire completely new staff
+
+- Hire more staff. Many times, food arrived hours after placing an order. It would be beneficial to hire more drivers to get food to customers more quickly
+
+- Retrain staff on how to operate machinery correctly so that food is not overcooked 
+
+- Invest in a pizza box warmer so that food does not arrive cold
 
 * Positive Factors *
 The food is excellent when it is cooked and warm!
