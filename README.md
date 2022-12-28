@@ -15,13 +15,13 @@ Data exploration: an overview of ratings, emotion categories (positive/negative)
 
 #### Findings
 
-* Why does this restaurant have low ratings?  
+*Why does this restaurant have low ratings?  
 
 Most customers are unhappy with their experience because their food has either arrived cold or burnt. 
 Customer service is subpar, the long wait times, and customers receive incorrect orders
 How they feel about the restaurant matches up with the average sentiment
 
-* Recommended Improvements: 
+*Recommended Improvements: 
 
 - Retrain existing staff on customer service or rehire completely new staff
 
@@ -31,7 +31,7 @@ How they feel about the restaurant matches up with the average sentiment
 
 - Invest in a pizza box warmer so that food does not arrive cold
 
-* Positive Factors *
+*Positive Factors*
 The food is excellent when it is cooked and warm!
 
 
