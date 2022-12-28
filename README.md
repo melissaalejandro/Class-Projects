@@ -9,13 +9,11 @@ The app was designed to be an unemployment rate comparison tool. It allows you t
 
 This project seeks to understand why a local restaurant has a one-star review.
 
-#### Steps
+**Steps**
 
 Data exploration: an overview of ratings, emotion categories (positive/negative), frequently used words graph, word clouds of most frequently used words, distribution of ratings, sentiment analysis.
 
-#### Findings
-
-**Why does this restaurant have low ratings?**
+**Findings**
 
 Most customers are unhappy with their experience because their food has either arrived cold or burnt. 
 Customer service is subpar, the long wait times, and customers receive incorrect orders
