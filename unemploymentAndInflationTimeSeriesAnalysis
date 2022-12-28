@@ -4,7 +4,7 @@ library(readxl)
 library(tsDyn)
 library(dplyr); library(ggplot2)
 
-merged0 = read.csv('/Users/melissaalejandro/iCloud Drive (Archive) - 3/Documents/Documents - Melissa’s MacBook Pro/Financial Mkt Forecasting/Project/data sets/unemployment_inflation.csv')
+merged0 = read.csv('https://raw.githubusercontent.com/melissaalejandro/Class-Projects/main/unemployment_inflation.csv')
 
 merged = merged0
 merged$unemployment = log(merged$unemployment)
