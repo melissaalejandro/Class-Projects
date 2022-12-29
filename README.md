@@ -9,9 +9,16 @@ The app was designed to be an unemployment rate comparison tool. It allows you t
 
 This project seeks to understand why a local restaurant has a one-star review by using text and sentiment analysis.
 
-**Steps**
+**Data exploration:** an overview of ratings, which includes using a bell curve to visualize the distribution of ratings
 
-Data exploration: an overview of ratings, emotion categories (positive/negative), frequently used words graph, word clouds of most frequently used words, distribution of ratings, sentiment analysis.
+**Text Analysis**
+
+We used emotion categories (positive/negative), a frequently used words graph, and word clouds.
+
+
+**Sentiment Analysis**
+
+Tested customer sentiment using five packages: Syuzhet, Bing, AFINN, NRC, and Sentimentr. 
 
 **Findings**
 
