@@ -1,6 +1,3 @@
-#diabetes0 = read.csv("/Users/melissaalejandro/iCloud Drive (Archive) - 3/Documents/Documents - Melissa’s MacBook Pro/Predictive Modeling/project/diabetes.csv")
-#head(diabetes0)
-
 library(caret)
 library(MASS)
 library(mice)
@@ -8,10 +5,7 @@ library(tidyverse)
 library(randomForest)
 
 
-diabetes0 = read.csv('https://github.com/bandcar/Examples/raw/main/diabetes.csv')
-
-# Make a copy of original data
-original = diabetes0
+diabetes0 = read.csv("https://raw.githubusercontent.com/melissaalejandro/Class-Projects/main/diabetes.csv")
 
 ##### Label 0 -> No and 1 -> Yes #####
 diabetes0$Outcome[diabetes0$Outcome==0] = "No"
@@ -144,7 +138,7 @@ logisticTune <- train(x = as.matrix(diabTrainTrans[,1:8]),
                       trControl = ctrl)
 logisticTune 
 
-# variable importance ----
+# variable importance 
 plot(varImp(logisticTune, scale =FALSE))
 
 test_results <- data.frame(obs = diabTestTrans$Outcome,
@@ -215,8 +209,10 @@ plot(rfTune)
 
 plot(varImp(rfTune, scale =FALSE))
 
+# ====================================================
+# Predict the test set based on four models ----
+# ====================================================
 
-######### Predict the test set based on four models ###############
 
 #logistic 
 diabTestTrans$logistic <- predict(logisticTune,diabTestTrans, type = "prob")[,1]
@@ -231,7 +227,7 @@ diabTestTrans$SVMR <- predict(svmRTune, diabTestTrans[,1:8], type = "prob")[,1]
 diabTestTrans$RF <- predict(rfTune,diabTestTrans, type = "prob")[,1]
 
 
-######################### ROC curves ######################
+##### ROC curves #####
 library(pROC)
 dev.off()
 #ROC for logistic model
@@ -253,7 +249,11 @@ lines(RFROC, col=4, lty=4, lwd=2)
 legend('bottomright', c('logistic','plsda','SVM', 'Random Forest'), col=1:6, lty=1:5,lwd=2)
 
 
-########## Create the confusion matrix from the test set ############
+# ====================================================
+# Create the confusion matrix from the test set ----
+# ====================================================
+
+
 #Confusion matrix of logistic model
 confusionMatrix(data = predict(logisticTune, diabTestTrans), reference = diabTestTrans$Outcome)
 
