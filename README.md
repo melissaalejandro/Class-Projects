@@ -7,7 +7,7 @@ The app was designed to be an unemployment rate comparison tool. It allows you t
 
 ## Project Pizza
 
-This project seeks to understand why a local restaurant has a one-star review.
+This project seeks to understand why a local restaurant has a one-star review by using text and sentiment analysis.
 
 **Steps**
 
