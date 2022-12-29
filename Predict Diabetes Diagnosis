@@ -1,0 +1,274 @@
+#diabetes0 = read.csv("/Users/melissaalejandro/iCloud Drive (Archive) - 3/Documents/Documents - Melissa’s MacBook Pro/Predictive Modeling/project/diabetes.csv")
+#head(diabetes0)
+
+library(caret)
+library(MASS)
+library(mice)
+library(tidyverse)
+library(randomForest)
+
+
+diabetes0 = read.csv('https://github.com/bandcar/Examples/raw/main/diabetes.csv')
+
+# Make a copy of original data
+original = diabetes0
+
+##### Label 0 -> No and 1 -> Yes #####
+diabetes0$Outcome[diabetes0$Outcome==0] = "No"
+diabetes0$Outcome[diabetes0$Outcome==1] = "Yes"
+diabetes0$Outcome = as.factor(diabetes0$Outcome)
+
+# check for missing values ----
+sapply(diabetes0, function(x) sum(is.na(x)))
+
+# change 0's to NA
+diabetes0[, 2:7][diabetes0[, 2:7] == 0] <- NA
+
+# check for missing values again
+sapply(diabetes0, function(x) sum(is.na(x)))
+str(diabetes0)
+
+# ====================================================
+# Data Exploration ----
+# ====================================================
+
+# Missing data graphics ----
+library(finalfit)
+diabetes0 %>% 
+  missing_plot()
+
+# install.packages('naniar')
+# install.packages('visdat')
+# Visualize missing data
+library(visdat)
+vis_miss(diabetes0)
+vis_dat(diabetes0)
+# Correlation matrix
+vis_cor(diabetes0[,-9])
+
+summary(diabetes0)
+
+# Impute missing values ----
+# cart = classification and regression trees
+imputed_data <-  mice(diabetes0[,1:8], method="cart")
+# A CART is a predictive algorithm that determines how a given variable’s values can be predicted based on other values.
+# It is composed of decision trees where each fork is a split in a predictor variable and each node at the end has a prediction for the target variable.
+# CART methods have properties that make them attractive for imputation: they are robust against outliers, can deal with multicollinearity and skewed distributions, and are flexible enough to fit interactions and nonlinear relations. Furthermore, many aspects of model fitting have been automated, so there is “little tuning needed by the imputer” (Burgette and Reiter 2010).
+
+
+# use the complete() function and assign to a new object. 
+diabetes <- complete(imputed_data) 
+sapply(diabetes, function(x) sum(is.na(x)))
+summary(diabetes)
+# add pregnancy and outcome back to data frame
+#diabetes$Pregnancies <- diabetes0$Pregnancies
+diabetes$Outcome <- diabetes0$Outcome
+
+# Reorder df so Pregnancies is in the first col:
+#diabetes <- diabetes[, c(6,1,2,3,4,5,7)]
+
+# Variable relationship ----
+pairs(diabetes, col = "deepskyblue", pch = 18)
+cor(diabetes[,-9])
+
+# Correlation ----
+diabetes2 = diabetes[,-9]
+
+# correlation plot
+library(corrplot)
+a = as.matrix(diabetes2)
+corrplot(cor(a), method="color",shade.col=NA, order = 'hclust', tl.col="black", tl.srt=45, addCoef.col = 'black',number.cex=0.6)
+
+# Boxplot Outliers ----
+boxplot(diabetes, col = "deepskyblue")
+
+summary(diabetes)
+
+# Histogram: distribution of data ----
+par(mfrow = c(3, 3))
+for (i in 1:8) {
+  hist(diabetes2[ ,i], xlab = names(diabetes2[i]), main = paste(names(diabetes2[i]), "Histogram"), col="deepskyblue")  
+}
+
+# ====================================================
+# Build the Model ----
+# ====================================================
+
+# split data ----
+set.seed(100)
+inTrain <- createDataPartition(as.matrix(diabetes[,9]), p = .8, list=FALSE)
+diab.train = diabetes[inTrain,]
+diab.test = diabetes[-inTrain,]
+
+
+# preprocess ----
+diab.TrainPP <- preProcess(diab.train, method = c("BoxCox", "scale", "center","nzv","spatialSign"))
+diab.TestPP <- preProcess(diab.test, method = c("BoxCox", "scale", "center","nzv","spatialSign"))
+
+# Predict
+diabTrainTrans <- predict(diab.TrainPP, diab.train)
+diabTestTrans <- predict(diab.TestPP, diab.test)
+
+# change outcome variable to factor variable
+#diabTrainTrans$Outcome <- as.factor(diabTrainTrans$Outcome)
+
+# Change binary number to binary character x1 = 1 x2 = 2
+#diabTrainTrans <- diabTrainTrans %>%
+#  mutate(Outcome = factor(Outcome,
+#                            labels = make.names(levels(Outcome))))
+
+# check dist after transformation----
+diabetes2 = diabTrainTrans[,-9]
+par(mfrow = c(3, 3))
+for (i in 1:8) {
+  hist(diabetes2[ ,i], xlab = names(diabetes2[i]), main = paste(names(diabetes2[i]), "Histogram"), col="deepskyblue")  
+}                      
+
+#control the computational nuances of the train function
+set.seed(100)
+ctrl <- trainControl(method = "LGOCV",
+                     summaryFunction = twoClassSummary,
+                     classProbs = TRUE,
+                     savePredictions = TRUE)
+
+
+
+############################## 
+# Logistic Regression ----
+##############################
+set.seed(5)
+logisticTune <- train(x = as.matrix(diabTrainTrans[,1:8]), 
+                      y = diabTrainTrans$Outcome,
+                      method = "glm",
+                      metric = "ROC",
+                      trControl = ctrl)
+logisticTune 
+
+# variable importance ----
+plot(varImp(logisticTune, scale =FALSE))
+
+test_results <- data.frame(obs = diabTestTrans$Outcome,
+                           logistic = predict(logisticTune, diabTestTrans))
+
+
+##############################
+# PLSDA Regression ----
+##############################
+set.seed(476)
+plsdaTune <- train(x = as.matrix(diabTrainTrans[,1:8]),
+                   y = diabTrainTrans$Outcome,
+                   method = "pls", 
+                   metric = "ROC",
+                   tuneGrid = expand.grid(.ncomp = 1:5),
+                   trControl = ctrl)
+
+plsdaTune
+plot(plsdaTune)
+plot(varImp(plsdaTune, scale =FALSE))
+
+##############################
+# SVM Radial ----
+##############################
+set.seed(476)
+library(kernlab)
+sigmaRangeReduced <- sigest(as.matrix(diabTrainTrans[,1:8]))
+svmRGridReduced <- expand.grid(.sigma = sigmaRangeReduced[1],
+                               .C = 2^(seq(-4, 4)))
+svmRTune <- train(x = as.matrix(diabTrainTrans[,1:8]),
+                  y = diabTrainTrans$Outcome,
+                  method = "svmRadial", #svmLinear #svmPoly
+                  metric = "ROC",
+                  preProc = c("center", "scale"),
+                  tuneGrid = svmRGridReduced,
+                  fit = FALSE,
+                  trControl = ctrl)
+svmRTune
+
+test_results$svm <- predict(svmRTune, newdata=diabTestTrans[,-9])
+
+plot(varImp(svmRTune, scale =FALSE))
+
+# ====================================================
+# Test Results ----
+# ====================================================
+
+#SVM_Results
+
+##############################
+# Random Forest ----
+##############################
+mtryGrid <- data.frame(mtry = 1:8) #since we only have 6 predictors
+
+### Tune the model using cross-validation
+set.seed(476)
+rfTune <- train(x = as.matrix(diabTrainTrans[,1:8]),
+                y = diabTrainTrans$Outcome,
+                method = "rf",
+                metric = "ROC",
+                tuneGrid = mtryGrid,
+                ntree = 150,
+                importance = TRUE,
+                trControl = ctrl)
+rfTune
+
+plot(rfTune)
+
+plot(varImp(rfTune, scale =FALSE))
+
+
+######### Predict the test set based on four models ###############
+
+#logistic 
+diabTestTrans$logistic <- predict(logisticTune,diabTestTrans, type = "prob")[,1]
+
+#PLSDA
+diabTestTrans$plsda <- predict(plsdaTune,diabTestTrans[,1:8], type = "prob")[,1]
+
+#SVM
+diabTestTrans$SVMR <- predict(svmRTune, diabTestTrans[,1:8], type = "prob")[,1]
+
+#Random Forest
+diabTestTrans$RF <- predict(rfTune,diabTestTrans, type = "prob")[,1]
+
+
+######################### ROC curves ######################
+library(pROC)
+dev.off()
+#ROC for logistic model
+logisticROC <- roc(diabTestTrans$Outcome, diabTestTrans$logistic)
+plot(logisticROC, col=1, lty=1, lwd=2)
+
+#ROC for PLSDA
+plsdaROC <- roc(diabTestTrans$Outcome, diabTestTrans$plsda)
+lines(plsdaROC, col=3, lty=3, lwd=2)
+
+#ROC for SVM
+SVMROC <- roc(diabTestTrans$Outcome, diabTestTrans$SVMR)
+lines(SVMROC, col=8, lty=8, lwd=2)
+
+#ROC for Random Forest
+RFROC <- roc(diabTestTrans$Outcome, diabTestTrans$RF)
+lines(RFROC, col=4, lty=4, lwd=2)
+
+legend('bottomright', c('logistic','plsda','SVM', 'Random Forest'), col=1:6, lty=1:5,lwd=2)
+
+
+########## Create the confusion matrix from the test set ############
+#Confusion matrix of logistic model
+confusionMatrix(data = predict(logisticTune, diabTestTrans), reference = diabTestTrans$Outcome)
+
+#Confusion matrix of partial least squares discriminant analysis
+confusionMatrix(data = predict(plsdaTune, diabTestTrans), reference = diabTestTrans$Outcome)
+
+#Confusion matrix of SVM
+confusionMatrix(data = predict(svmRTune, diabTestTrans[,1:8]), reference = diabTestTrans$Outcome)
+
+#Confusion matrix of Random Forest
+confusionMatrix(data = predict(rfTune, diabTestTrans), reference = diabTestTrans$Outcome)
+
+
+#We can add the models from chapter 12
+res1 = resamples(list(Logistic = logisticTune, PLSDA = plsdaTune, 
+                      SVM = svmRTune, RandomForest = rfTune ))
+dotplot(res1)
+
