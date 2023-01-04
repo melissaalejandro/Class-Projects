@@ -30,24 +30,22 @@ summary(diabetes)
 
 
 # Variable relationship 
-
 ggpairs(diabetes, 
         lower = list(continuous = wrap('points', color='red')),
         diag = list(continuous = wrap("densityDiag", fill='deepskyblue')),
         upper = list(continuous = wrap('cor', color='black')))
 
 
-
 # correlation plot
 #library(corrplot)
 corrplot(cor(diabetes[-9]), method="square", type = 'full', order = 'hclust', tl.col="black", tl.cex = .35, tl.srt=45, addCoef.col = 'black',number.cex=0.6)
 
-# Boxplot Outliers ----
+# Boxplot Outliers 
 boxplot(diabetes, col = "deepskyblue")
 
 summary(diabetes)
 
-# Histogram: distribution of data ----
+# Histogram: distribution of data 
 par(mfrow = c(3, 3))
 for (i in 1:8) {
   hist(diabetes[ ,i], xlab = names(diabetes[i]), main = paste(names(diabetes[i]), "Histogram"), col="deepskyblue")  
@@ -57,7 +55,7 @@ for (i in 1:8) {
 # Build the Model ----
 # ====================================================
 
-# split data ----
+# split data 
 set.seed(100)
 inTrain <- createDataPartition(as.matrix(diabetes[,9]), p = .8, list=FALSE)
 diab.train = diabetes[inTrain,]
@@ -144,15 +142,15 @@ test_results$svm <- predict(svmRTune, newdata=diabTestTrans[,-9])
 
 plot(varImp(svmRTune, scale =FALSE))
 
+
 # ====================================================
 # Test Results ----
 # ====================================================
 
-#SVM_Results
-
 ##############################
 # Random Forest ----
 ##############################
+
 mtryGrid <- data.frame(mtry = 1:8) #since we only have 8 predictors
 
 ### Tune the model using cross-validation
@@ -214,6 +212,7 @@ legend('bottomright', c('logistic','plsda','SVM', 'Random Forest'), col=1:6, lty
 # ====================================================
 # Create the confusion matrix from the test set ----
 # ====================================================
+
 #Confusion matrix of logistic model
 a=confusionMatrix(data = predict(logisticTune, diabTestTrans), reference = diabTestTrans$Outcome)
 
@@ -240,5 +239,3 @@ results <- cbind(data.frame(logistic = c(a$overall[1:2], a$byClass[1:2])),
 res1 = resamples(list(Logistic = logisticTune, PLSDA = plsdaTune, 
                       SVM = svmRTune, RandomForest = rfTune ))
 dotplot(res1)
-
-
