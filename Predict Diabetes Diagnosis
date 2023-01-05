@@ -91,7 +91,9 @@ ctrl <- trainControl(method = "LGOCV",
                      classProbs = TRUE,
                      savePredictions = TRUE)
 
-
+# ====================================================
+# Test Results ----
+# ====================================================
 
 ############################## 
 # Logistic Regression ----
@@ -138,7 +140,6 @@ svmRTune <- train(x = as.matrix(diabTrainTrans[,1:8]),
                   y = diabTrainTrans$Outcome,
                   method = "svmRadial", #svmLinear #svmPoly
                   metric = "ROC",
-                  preProc = c("center", "scale"),
                   tuneGrid = svmRGridReduced,
                   fit = FALSE,
                   trControl = ctrl)
@@ -147,11 +148,6 @@ svmRTune
 test_results$svm <- predict(svmRTune, newdata=diabTestTrans[,-9])
 
 plot(varImp(svmRTune, scale =FALSE))
-
-
-# ====================================================
-# Test Results ----
-# ====================================================
 
 ##############################
 # Random Forest ----
