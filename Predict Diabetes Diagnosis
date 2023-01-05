@@ -193,7 +193,7 @@ diabTestTrans$RF <- predict(rfTune,diabTestTrans, type = "prob")[,1]
 
 #library(pROC)
 #ROC for logistic model
-dev.off()
+par(mfrow=c(1,1))
 logisticROC <- roc(diabTestTrans$Outcome, diabTestTrans$logistic)
 plot(logisticROC, col=1, lty=1, lwd=2)
 
