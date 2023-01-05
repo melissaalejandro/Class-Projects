@@ -10,9 +10,10 @@ library(sjPlot); library(sjmisc); library(sjlabelled) # for reg output
 all0 = read.csv('https://raw.githubusercontent.com/melissaalejandro/Class-Projects/main/all.csv')
 
 
-# ---------------------------------------------------------------
-
+# ================================================
 # Check for normal distribution ----
+# ================================================
+
 shapiro.test(all0$population)
 shapiro.test(all0$total_shootings)
 shapiro.test(all0$lawtotal)
@@ -35,18 +36,19 @@ hist(all0$lawtotal,
      xlab= 'Total Laws',
      main = 'Law Total, Pre Transformation')
 
-
+# ================================================
 # Transform using logs----
+# ================================================
 
 allLog = all0
 
-allLog$total_shootings = log(allLog$total_shootings)
+allLog$total_shootings = log(allLog$total_shootings) # take log of total shootings
 
-allLog$population = log(allLog$population)
+allLog$population = log(allLog$population) # log of population
 
-allLog$lawtotal = log(allLog$lawtotal)
+allLog$lawtotal = log(allLog$lawtotal) # log of lawtotal
 
-allLog$shootings_per100k = (allLog$total_shootings/(allLog$population))*100000
+allLog$shootings_per100k = (allLog$total_shootings/(allLog$population))*100000 # compute shootings per 100k people
 
 # See data post transformation
 par(mfrow=c(2,2))
@@ -97,10 +99,10 @@ ggplot(allLog, aes(x=lawtotal,
 
 library(GGally)
 lowerFn <- function(data, mapping, method = "lm", ...) {
-  p <- ggplot(data = data, mapping = mapping) +
+  fn <- ggplot(data = data, mapping = mapping) +
     geom_point(colour = "black") +
     geom_smooth(method = method, color = "red", ...)
-  p
+  fn
 }
 
 ggpairs(data=allLog, 
