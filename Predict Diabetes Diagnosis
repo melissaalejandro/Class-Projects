@@ -28,13 +28,11 @@ summary(diabetes)
 # Data Exploration ----
 # ====================================================
 
-
 # Variable relationship 
 ggpairs(diabetes, 
-        lower = list(continuous = wrap('points', color='red')),
-        diag = list(continuous = wrap("densityDiag", fill='deepskyblue')),
+        lower = list(continuous = wrap('smooth', color='red', alpha=0.7, size=0.8)),
+        diag = list(continuous = wrap("densityDiag", fill='deepskyblue', alpha=0.9)),
         upper = list(continuous = wrap('cor', color='black')))
-
 
 # correlation plot
 #library(corrplot)
@@ -171,16 +169,16 @@ plot(varImp(rfTune, scale =FALSE))
 # Predict the test set based on four models ---- 
 # ====================================================
 
-#logistic 
+### logistic ###
 diabTestTrans$logistic <- predict(logisticTune,diabTestTrans, type = "prob")[,1]
 
-#PLSDA
+### PLSDA ###
 diabTestTrans$plsda <- predict(plsdaTune,diabTestTrans[,1:8], type = "prob")[,1]
 
-#SVM
+### SVM ###
 diabTestTrans$SVMR <- predict(svmRTune, diabTestTrans[,1:8], type = "prob")[,1]
 
-#Random Forest
+### Random Forest ###
 diabTestTrans$RF <- predict(rfTune,diabTestTrans, type = "prob")[,1]
 
 # ====================================================
