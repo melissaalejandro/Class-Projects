@@ -73,7 +73,7 @@ diab.test = diabetes[-inTrain,]
 diab.TrainPP <- preProcess(diab.train, method = c("BoxCox", "scale", "center","nzv","spatialSign"))
 diab.TestPP <- preProcess(diab.test, method = c("BoxCox", "scale", "center","nzv","spatialSign"))
 
-# Predict (Applies transformations)
+# transform the dataset using the parameters ('predict' applies the transformations)
 diabTrainTrans <- predict(diab.TrainPP, diab.train)
 diabTestTrans <- predict(diab.TestPP, diab.test)
 
