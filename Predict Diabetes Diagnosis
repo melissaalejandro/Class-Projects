@@ -17,11 +17,21 @@ diabetes0$Outcome[diabetes0$Outcome==0] = "No"
 diabetes0$Outcome[diabetes0$Outcome==1] = "Yes"
 diabetes0$Outcome = as.factor(diabetes0$Outcome)
 
+# check for NA's
+cbind(lapply(lapply(diabetes0, is.na), sum))
+
+summary(diabetes0)
+
+# check how many 0's are in each column
+cbind(lapply(colSums(diabetes0[1:8] == 0), sum))
+
+
 # keep only rows where bmi and skin thickness are >0
 diabetes = diabetes0 %>% 
   filter(diabetes0$BMI > 0 & diabetes0$SkinThickness > 0)
 
 summary(diabetes)
+str(diabetes)
 
 
 # ====================================================
@@ -30,8 +40,8 @@ summary(diabetes)
 
 # Variable relationship 
 ggpairs(diabetes, 
-        lower = list(continuous = wrap('smooth', color='red', alpha=0.7, size=0.8)),
-        diag = list(continuous = wrap("densityDiag", fill='deepskyblue', alpha=0.9)),
+        lower = list(continuous = wrap('points', color='red')),
+        diag = list(continuous = wrap("densityDiag", fill='deepskyblue')),
         upper = list(continuous = wrap('cor', color='black')))
 
 # correlation plot
@@ -59,15 +69,13 @@ inTrain <- createDataPartition(as.matrix(diabetes[,9]), p = .8, list=FALSE)
 diab.train = diabetes[inTrain,]
 diab.test = diabetes[-inTrain,]
 
-
 # preprocess 
 diab.TrainPP <- preProcess(diab.train, method = c("BoxCox", "scale", "center","nzv","spatialSign"))
 diab.TestPP <- preProcess(diab.test, method = c("BoxCox", "scale", "center","nzv","spatialSign"))
 
-# Predict
+# Predict (Applies transformations)
 diabTrainTrans <- predict(diab.TrainPP, diab.train)
 diabTestTrans <- predict(diab.TestPP, diab.test)
-
 
 # check dist after transformation
 diabetes2 = diabTrainTrans[,-9]
@@ -83,9 +91,7 @@ ctrl <- trainControl(method = "LGOCV",
                      classProbs = TRUE,
                      savePredictions = TRUE)
 
-# ====================================================
-# Test Results ----
-# ====================================================
+
 
 ############################## 
 # Logistic Regression ----
@@ -143,6 +149,10 @@ test_results$svm <- predict(svmRTune, newdata=diabTestTrans[,-9])
 plot(varImp(svmRTune, scale =FALSE))
 
 
+# ====================================================
+# Test Results ----
+# ====================================================
+
 ##############################
 # Random Forest ----
 ##############################
@@ -169,16 +179,16 @@ plot(varImp(rfTune, scale =FALSE))
 # Predict the test set based on four models ---- 
 # ====================================================
 
-### logistic ###
+#logistic 
 diabTestTrans$logistic <- predict(logisticTune,diabTestTrans, type = "prob")[,1]
 
-### PLSDA ###
+#PLSDA
 diabTestTrans$plsda <- predict(plsdaTune,diabTestTrans[,1:8], type = "prob")[,1]
 
-### SVM ###
+#SVM
 diabTestTrans$SVMR <- predict(svmRTune, diabTestTrans[,1:8], type = "prob")[,1]
 
-### Random Forest ###
+#Random Forest
 diabTestTrans$RF <- predict(rfTune,diabTestTrans, type = "prob")[,1]
 
 # ====================================================
@@ -222,13 +232,13 @@ c=confusionMatrix(data = predict(svmRTune, diabTestTrans[,1:8]), reference = dia
 d=confusionMatrix(data = predict(rfTune, diabTestTrans), reference = diabTestTrans$Outcome)
 
 # put results of confusion matrix into a df
-results <- cbind(data.frame(logistic = c(a$overall[1:2], a$byClass[1:2])),
+results2 <- cbind(data.frame(logistic = c(a$overall[1:2], a$byClass[1:2])),
                  data.frame(plsda = c(b$overall[1:2], b$byClass[1:2])),
                  data.frame(svmR = c(c$overall[1:2], c$byClass[1:2])),
                  data.frame(rf = c(d$overall[1:2], d$byClass[1:2])))
 
 # transpose df
-(results=t(results))
+(results2=t(results2))
 
 
 #We can add the models from chapter 12
