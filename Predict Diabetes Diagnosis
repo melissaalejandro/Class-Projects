@@ -85,7 +85,9 @@ ctrl <- trainControl(method = "LGOCV",
                      classProbs = TRUE,
                      savePredictions = TRUE)
 
-
+# ====================================================
+# Test Results ----
+# ====================================================
 
 ############################## 
 # Logistic Regression ----
@@ -142,10 +144,6 @@ test_results$svm <- predict(svmRTune, newdata=diabTestTrans[,-9])
 
 plot(varImp(svmRTune, scale =FALSE))
 
-
-# ====================================================
-# Test Results ----
-# ====================================================
 
 ##############################
 # Random Forest ----
