@@ -16,13 +16,17 @@ library(quanteda)
 library(quanteda.textstats)
 library(quanteda.textplots)
 
-# Create url object -------------------------------
+# ==================================================================
+# Scrape the data ----
+# ==================================================================
+
+# Create url object 
 url = "https://www.yelp.com/biz/24th-st-pizzeria-san-antonio?osq=Worst+Restaurant"
 
-# Convert url to html object ----------------------
+# Convert url to html object 
 page <- read_html(url)
 
-# Number of pages ---------------------------------
+# Number of pages 
 pageNums = page %>%
   html_elements(xpath = "//div[@class=' border-color--default__09f24__NPAKY text-align--center__09f24__fYBGO']") %>%
   html_text() %>%
@@ -31,10 +35,10 @@ pageNums = page %>%
   as.numeric() 
 
 
-# Create page sequence ----------------------------
+# Create page sequence 
 pageSequence <- seq(from=0, to=(pageNums * 10)-10, by = 10)
 
-# Create empty vectors to store data --------------
+# Create empty vectors to store data 
 review_date_all = c()
 review_rating_all = c()
 review_text_all = c()
@@ -125,7 +129,7 @@ plot_ly(sentToks, x=~emotion, y=~count, type="bar", color=~emotion) %>%
          title="Distribution of emotion categories")
 
 # ==================================================================
-# Corpus and Tokenize 
+# Corpus and Tokenization
 # ==================================================================
 
 ### Change to corpus format using 'Text' column ####
@@ -244,7 +248,7 @@ textplot_wordcloud(one_and_five_dfm, comparison = TRUE, min_count = 8, color = R
 # Sentiment Analysis ----
 # ==================================================================
 
-# User Sentiment Scores (sentimentr) --------------
+# User Sentiment Scores (sentimentr) 
 library(sentimentr)
 sentiment_scores <- sentiment_by(df$Text)
 
@@ -264,7 +268,7 @@ sentiment_scores_df %>%
   kable_paper("hover", full_width = F) %>% 
   row_spec(0, color='black') 
 
-# Plot density of sentiment -----------------------
+# Plot density of sentiment 
 dat <- with(density(sentiment_scores_df$ave_sentiment), data.frame(x, y))
 
 ggplot(dat, aes(x = x, y = y)) +
@@ -278,7 +282,7 @@ ggplot(dat, aes(x = x, y = y)) +
 
 
 
-# Different methods for getting sentiment ----
+# Different methods for getting sentiment --------------------------
 library(syuzhet)
 sentReviews <- iconv(df$Text)
 syuzhet <- get_sentiment(sentReviews, method="syuzhet")
@@ -286,7 +290,7 @@ bing <- get_sentiment(sentReviews, method="bing")
 afinn <- get_sentiment(sentReviews, method="afinn")
 nrc <- get_sentiment(sentReviews, method="nrc")
 
-# Compare different methods for getting sentiment ----
+# Compare sentiment results from each method 
 sentiments <- data.frame(syuzhet, bing, afinn, nrc, sentiment_scores)
 View(sentiments)
 sentiments <- sentiments[-(5:7)] # remove columns 5:7
