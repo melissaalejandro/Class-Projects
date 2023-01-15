@@ -2,7 +2,7 @@
 
 ## app.r
 
-This ShinyApp is designed to be an unemployment rate comparison tool. It allows the user to view the unemployment rate for all states before and after covid-19. To view the app in action, please visit:
+This ShinyApp is designed to be an unemployment rate comparison tool. It allows the user to view the unemployment rate for all states before and after covid-19. To view the app (best viewed in desktop) in action, please visit:
 
 https://icecucumber.shinyapps.io/Avg_Unemployment_Rates/?fbclid=IwAR0HotrUH3rbXxIEG3MOiNIoiH6VutaOql2K0136-z8-cd_PJrDd-5P2iDg&mibextid=Zxz2cZ
 
