@@ -20,11 +20,6 @@ diabetes0 = read.csv("https://raw.githubusercontent.com/melissaalejandro/Class-P
 # level (mu U/ml), body mass index, diabetes pedigree function, and age.  The Target variable is labeled as 'Outcome' where 0 means 'no' (does not 
 # have diabetes) & 1 means yes (does have diabetes). The data consists of all females, age 21 and older who are of Pima Indian heritage. 
 
-## Change labels
-##### Label 0 -> No and 1 -> Yes #####
-diabetes0$Outcome[diabetes0$Outcome==0] = "No"
-diabetes0$Outcome[diabetes0$Outcome==1] = "Yes"
-diabetes0$Outcome = as.factor(diabetes0$Outcome)
 
 summary(diabetes0)
 
@@ -45,19 +40,19 @@ summary(diabetes)
 str(diabetes)
 
 
+
 # ====================================================
 # Data Exploration ----
 # ====================================================
 
 # Variable relationship 
 ggpairs(diabetes, 
-        lower = list(continuous = wrap('points', color='red')),
-        diag = list(continuous = wrap("densityDiag", fill='deepskyblue')),
-        upper = list(continuous = wrap('cor', color='black')))
+        lower = list(continuous = wrap('smooth', color='red', alpha=0.7, size=0.8)),
+        diag = list(continuous = wrap("densityDiag", fill='deepskyblue', alpha=0.9)),
+        upper = list(continuous = wrap('cor', color='black'))) # moderate correlation with glucose (0.464)
 
 # correlation plot
-#library(corrplot)
-corrplot(cor(diabetes[-9]), method="square", type = 'full', order = 'hclust', tl.col="black", tl.cex = .35, tl.srt=45, addCoef.col = 'black',number.cex=0.6)
+corrplot(cor(diabetes), method="square", type = 'full', order = 'hclust', tl.col="black", tl.cex = .35, tl.srt=45, addCoef.col = 'black',number.cex=0.6)
 
 # Boxplot Outliers 
 boxplot(diabetes, col = "deepskyblue")
@@ -66,13 +61,19 @@ summary(diabetes)
 
 # Histogram: distribution of data 
 par(mfrow = c(3, 3))
-for (i in 1:8) {
+for (i in 1:9) {
   hist(diabetes[ ,i], xlab = names(diabetes[i]), main = paste(names(diabetes[i]), "Histogram"), col="deepskyblue")  
 }
 
 # ====================================================
 # Build the Model ----
 # ====================================================
+
+## Change labels
+##### Label 0 -> No and 1 -> Yes #####
+diabetes$Outcome[diabetes$Outcome==0] = "No"
+diabetes$Outcome[diabetes$Outcome==1] = "Yes"
+diabetes$Outcome = as.factor(diabetes$Outcome)
 
 # split data 
 set.seed(100)
@@ -89,10 +90,9 @@ diabTrainTrans <- predict(diab.TrainPP, diab.train)
 diabTestTrans <- predict(diab.TestPP, diab.test)
 
 # check dist after transformation
-diabetes2 = diabTrainTrans[,-9]
 par(mfrow = c(3, 3))
 for (i in 1:8) {
-  hist(diabetes2[ ,i], xlab = names(diabetes2[i]), main = paste(names(diabetes2[i]), "Histogram"), col="deepskyblue")  
+  hist(diabetes[ ,i], xlab = names(diabetes[i]), main = paste(names(diabetes[i]), "Histogram"), col="deepskyblue")  
 }                      
 
 #control the computational nuances of the train function
@@ -136,6 +136,9 @@ plsdaTune <- train(x = diabTrainTrans[,1:8],
                    trControl = ctrl)
 
 plsdaTune
+
+test_results$plsda <- predict(plsdaTune, newdata=diab.test[,-9])
+
 plot(plsdaTune)
 plot(varImp(plsdaTune, scale =FALSE))
 
@@ -177,6 +180,8 @@ rfTune <- train(x = as.matrix(diabTrainTrans[,1:8]),
                 importance = TRUE,
                 trControl = ctrl)
 rfTune
+
+test_results$rf <- predict(rfTune, newdata=diab.test)
 
 plot(rfTune)
 
@@ -248,7 +253,7 @@ results2 <- cbind(data.frame(logistic = c(a$overall[1:2], a$byClass[1:2])),
 (results2=t(results2))
 
 
-#We can add the models from chapter 12
+# Create dot plot
 res1 = resamples(list(Logistic = logisticTune, PLSDA = plsdaTune, 
                       SVM = svmRTune, RandomForest = rfTune ))
 dotplot(res1)
