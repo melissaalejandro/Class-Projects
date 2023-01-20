@@ -12,6 +12,8 @@ library(pROC)
 
 diabetes0 = read.csv("https://raw.githubusercontent.com/melissaalejandro/Class-Projects/main/diabetes.csv")
 
+
+## The Target variable is labeled Outcome where 0 means 'no' (does not have diabetes) and 1 means yes (does have diabetes). Change the labels.
 ##### Label 0 -> No and 1 -> Yes #####
 diabetes0$Outcome[diabetes0$Outcome==0] = "No"
 diabetes0$Outcome[diabetes0$Outcome==1] = "Yes"
@@ -20,11 +22,18 @@ diabetes0$Outcome = as.factor(diabetes0$Outcome)
 # check for NA's
 cbind(lapply(lapply(diabetes0, is.na), sum))
 
+## Data Overview 
+
+# Predictors include number of pregnancies, glucose, Diastolic blood pressure (mm HG), skin fold thickness on triceps (mm), 2 hour serum insulin level (mu U/ml), body mass index, diabetes pedigree function, and age.  The data consists of all females, age 21 and older who are of Pima Indian heritage. 
+
 summary(diabetes0)
 
 # check the number of 0's in each column
 cbind(lapply(colSums(diabetes0[1:8] == 0), sum))
 
+## Filtering the data
+
+# The variables BMI, Insulin, SkinThickness, BloodPressure, and Glucose have minimum values of zero. It's important to note that there are certain medical conditions where diastolic blood pressure, insulin levels, and glucose levels can be at zero. However, cases where a patient has a 0 BMI or 0 mm of skin thickness are extremely unlikely. Therefore, any rows with zeroes in SkinThickness and BMI will be removed. 
 
 # keep only rows where bmi and skin thickness are >0
 diabetes = diabetes0 %>% 
