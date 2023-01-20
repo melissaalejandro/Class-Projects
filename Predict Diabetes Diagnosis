@@ -24,7 +24,9 @@ cbind(lapply(lapply(diabetes0, is.na), sum))
 
 ## Data Overview 
 
-# Predictors include number of pregnancies, glucose, Diastolic blood pressure (mm HG), skin fold thickness on triceps (mm), 2 hour serum insulin level (mu U/ml), body mass index, diabetes pedigree function, and age.  The data consists of all females, age 21 and older who are of Pima Indian heritage. 
+# Predictors include number of pregnancies, glucose, Diastolic blood pressure (mm HG), skin fold thickness on triceps (mm),
+# 2 hour serum insulin level (mu U/ml), body mass index, diabetes pedigree function, and age.  The data consists of all females, age 21 and 
+# older who are of Pima Indian heritage. 
 
 summary(diabetes0)
 
@@ -33,7 +35,9 @@ cbind(lapply(colSums(diabetes0[1:8] == 0), sum))
 
 ## Filtering the data
 
-# The variables BMI, Insulin, SkinThickness, BloodPressure, and Glucose have minimum values of zero. It's important to note that there are certain medical conditions where diastolic blood pressure, insulin levels, and glucose levels can be at zero. However, cases where a patient has a 0 BMI or 0 mm of skin thickness are extremely unlikely. Therefore, any rows with zeroes in SkinThickness and BMI will be removed. 
+# The variables BMI, Insulin, SkinThickness, BloodPressure, and Glucose have minimum values of zero. It's important to note that there are 
+# certain medical conditions where diastolic blood pressure, insulin levels, and glucose levels can be at zero. However, cases where a patient has
+# a 0 BMI or 0 mm of skin thickness are extremely unlikely. Therefore, any rows with zeroes in SkinThickness and BMI will be removed. 
 
 # keep only rows where bmi and skin thickness are >0
 diabetes = diabetes0 %>% 
