@@ -12,15 +12,16 @@ library(pROC)
 
 diabetes0 = read.csv("https://raw.githubusercontent.com/melissaalejandro/Class-Projects/main/diabetes.csv")
 
+# ====================================================
+# Data Overview  ----
+# ====================================================
+
+# Predictors include number of pregnancies, glucose, Diastolic blood pressure (mm HG), skin fold thickness on triceps (mm), 2 hour serum insulin level (mu U/ml), body mass index, diabetes pedigree function, and age.  The Target variable is labeled as 'Outcome' where 0 means 'no' (does not have diabetes) & 1 means yes (does have diabetes). The data consists of all females, age 21 and older who are of Pima Indian heritage. 
+
 # check for NA's
 cbind(lapply(lapply(diabetes0, is.na), sum))
 
-## Data Overview 
-
-# Predictors include number of pregnancies, glucose, Diastolic blood pressure (mm HG), skin fold thickness on triceps (mm), 2 hour serum insulin 
-# level (mu U/ml), body mass index, diabetes pedigree function, and age.  The Target variable is labeled as 'Outcome' where 0 means 'no' (does not
-# have diabetes) & 1 means yes (does have diabetes). The data consists of all females, age 21 and older who are of Pima Indian heritage. 
-
+# Summary statistics
 summary(diabetes0)
 
 # check number of 0's in each column
@@ -28,9 +29,7 @@ cbind(lapply(colSums(diabetes0[1:8] == 0), sum))
 
 ## Filtering the data
 
-# The variables BMI, Insulin, SkinThickness, BloodPressure, and Glucose have minimum values of zero. It's important to note that there are certain
-# medical conditions where diastolic blood pressure, insulin levels, and glucose levels can be at zero. However, cases where a patient has a 0 BMI
-# or 0 mm of skin thickness are extremely unlikely. Therefore, any rows with zeroes in SkinThickness and BMI will be removed. 
+# The variables BMI, Insulin, SkinThickness, BloodPressure, and Glucose have minimum values of zero. It's important to note that there are certain medical conditions where diastolic blood pressure, insulin levels, and glucose levels can be at zero. However, cases where a patient has a 0 BMI or 0 mm of skin thickness are extremely unlikely. Therefore, any rows with zeroes in SkinThickness and BMI will be removed. 
 
 # keep only rows where bmi and skin thickness are >0
 diabetes = diabetes0 %>% 
@@ -70,26 +69,18 @@ par(mfrow = c(1,1))
 # Build the Model ----
 # ====================================================
 
+## Change label names
+
+##### Label 0 -> No and 1 -> Yes #####
+diabetes$Outcome = factor(diabetes$Outcome,
+                                  levels = c(0,1),
+                                  labels = c("No", "Yes"))
+
 # split data 
 set.seed(100)
 inTrain <- createDataPartition(as.matrix(diabetes[,9]), p = .8, list=FALSE)
 diab.train = diabetes[inTrain,]
 diab.test = diabetes[-inTrain,]
-
-# preprocess 
-diab.TrainPP <- preProcess(diab.train, method = c("BoxCox", "scale", "center","nzv","spatialSign"))
-diab.TestPP <- preProcess(diab.test, method = c("BoxCox", "scale", "center","nzv","spatialSign"))
-
-# transform the dataset using the parameters ('predict' applies the transformations)
-diabTrainTrans <- predict(diab.TrainPP, diab.train)
-diabTestTrans <- predict(diab.TestPP, diab.test)
-
-# check dist after transformation
-diabetes2 = diabTrainTrans[,-9]
-par(mfrow = c(3, 3))
-for (i in 1:8) {
-  hist(diabetes2[ ,i], xlab = names(diabetes2[i]), main = paste(names(diabetes2[i]), "Histogram"), col="deepskyblue")  
-}                      
 
 #control the computational nuances of the train function
 set.seed(100)
@@ -106,32 +97,37 @@ ctrl <- trainControl(method = "LGOCV",
 # Logistic Regression ----
 ##############################
 set.seed(5)
-logisticTune <- train(x = as.matrix(diabTrainTrans[,1:8]), 
-                      y = diabTrainTrans$Outcome,
+logisticTune <- train(x = as.matrix(diab.train[,1:8]), 
+                      y = diab.train$Outcome,
                       method = "glm",
                       metric = "ROC",
+                      preProcess = c("BoxCox", "scale", "center","nzv","spatialSign"),
                       trControl = ctrl)
 logisticTune 
 
 # variable importance 
 plot(varImp(logisticTune, scale =FALSE))
 
-test_results <- data.frame(obs = diabTestTrans$Outcome,
-                           logistic = predict(logisticTune, diabTestTrans))
+test_results <- data.frame(obs = diab.test$Outcome,
+                           logistic = predict(logisticTune, diab.test))
 
 
 ##############################
 # PLSDA Regression ----
 ##############################
 set.seed(476)
-plsdaTune <- train(x = as.matrix(diabTrainTrans[,1:8]),
-                   y = diabTrainTrans$Outcome,
+plsdaTune <- train(x = diab.train[,1:8],
+                   y = diab.train$Outcome,
                    method = "pls", 
                    metric = "ROC",
                    tuneGrid = expand.grid(.ncomp = 1:5),
+                   preProcess = c("BoxCox", "scale", "center","nzv","spatialSign"),
                    trControl = ctrl)
 
 plsdaTune
+
+test_results$plsda <- predict(plsdaTune, newdata=diab.test[,-9])
+
 plot(plsdaTune)
 plot(varImp(plsdaTune, scale =FALSE))
 
@@ -140,21 +136,23 @@ plot(varImp(plsdaTune, scale =FALSE))
 ##############################
 set.seed(476)
 #library(kernlab)
-sigmaRangeReduced <- sigest(as.matrix(diabTrainTrans[,1:8]))
+sigmaRangeReduced <- sigest(as.matrix(diab.train[,1:8]))
 svmRGridReduced <- expand.grid(.sigma = sigmaRangeReduced[1],
                                .C = 2^(seq(-4, 4)))
-svmRTune <- train(x = as.matrix(diabTrainTrans[,1:8]),
-                  y = diabTrainTrans$Outcome,
+svmRTune <- train(x = diab.train[,1:8],
+                  y = diab.train$Outcome,
                   method = "svmRadial", #svmLinear #svmPoly
                   metric = "ROC",
+                  preProcess = c("BoxCox", "scale", "center","nzv","spatialSign"),
                   tuneGrid = svmRGridReduced,
                   fit = FALSE,
                   trControl = ctrl)
 svmRTune
 
-test_results$svm <- predict(svmRTune, newdata=diabTestTrans[,-9])
+test_results$svm <- predict(svmRTune, newdata=diab.test[,1:8])
 
 plot(varImp(svmRTune, scale =FALSE))
+
 
 ##############################
 # Random Forest ----
@@ -164,15 +162,18 @@ mtryGrid <- data.frame(mtry = 1:8) #since we only have 8 predictors
 
 ### Tune the model using cross-validation
 set.seed(476)
-rfTune <- train(x = as.matrix(diabTrainTrans[,1:8]),
-                y = diabTrainTrans$Outcome,
+rfTune <- train(x = diab.train[,1:8],
+                y = diab.train$Outcome,
                 method = "rf",
                 metric = "ROC",
                 tuneGrid = mtryGrid,
                 ntree = 150,
                 importance = TRUE,
+                preProcess = c("BoxCox", "scale", "center","nzv","spatialSign"),
                 trControl = ctrl)
 rfTune
+
+test_results$rf <- predict(rfTune, newdata=diab.test)
 
 plot(rfTune)
 
@@ -182,17 +183,17 @@ plot(varImp(rfTune, scale =FALSE))
 # Predict the test set based on four models ---- 
 # ====================================================
 
-#logistic 
-diabTestTrans$logistic <- predict(logisticTune,diabTestTrans, type = "prob")[,1]
+### logistic ###
+diab.test$logistic <- predict(logisticTune,diab.test, type = "prob")[,1] # probability it's 'no'
 
-#PLSDA
-diabTestTrans$plsda <- predict(plsdaTune,diabTestTrans[,1:8], type = "prob")[,1]
+### PLSDA ###
+diab.test$plsda <- predict(plsdaTune,diab.test, type = "prob")[,1]
 
-#SVM
-diabTestTrans$SVMR <- predict(svmRTune, diabTestTrans[,1:8], type = "prob")[,1]
+### SVM ###
+diab.test$SVMR <- predict(svmRTune, diab.test[,1:8], type = "prob")[,1]
 
-#Random Forest
-diabTestTrans$RF <- predict(rfTune,diabTestTrans, type = "prob")[,1]
+### Random Forest ###
+diab.test$RF <- predict(rfTune,diab.test, type = "prob")[,1]
 
 # ====================================================
 # ROC curves ----
@@ -200,20 +201,19 @@ diabTestTrans$RF <- predict(rfTune,diabTestTrans, type = "prob")[,1]
 
 #library(pROC)
 #ROC for logistic model
-par(mfrow=c(1,1))
-logisticROC <- roc(diabTestTrans$Outcome, diabTestTrans$logistic)
+logisticROC <- roc(diab.test$Outcome, diab.test$logistic)
 plot(logisticROC, col=1, lty=1, lwd=2)
 
 #ROC for PLSDA
-plsdaROC <- roc(diabTestTrans$Outcome, diabTestTrans$plsda)
+plsdaROC <- roc(diab.test$Outcome, diab.test$plsda)
 lines(plsdaROC, col=3, lty=3, lwd=2)
 
 #ROC for SVM
-SVMROC <- roc(diabTestTrans$Outcome, diabTestTrans$SVMR)
+SVMROC <- roc(diab.test$Outcome, diab.test$SVMR)
 lines(SVMROC, col=8, lty=8, lwd=2)
 
 #ROC for Random Forest
-RFROC <- roc(diabTestTrans$Outcome, diabTestTrans$RF)
+RFROC <- roc(diab.test$Outcome, diab.test$RF)
 lines(RFROC, col=4, lty=4, lwd=2)
 
 legend('bottomright', c('logistic','plsda','SVM', 'Random Forest'), col=1:6, lty=1:5,lwd=2)
@@ -223,25 +223,25 @@ legend('bottomright', c('logistic','plsda','SVM', 'Random Forest'), col=1:6, lty
 # ====================================================
 
 #Confusion matrix of logistic model
-a=confusionMatrix(data = predict(logisticTune, diabTestTrans), reference = diabTestTrans$Outcome)
+a=confusionMatrix(data = predict(logisticTune, diab.test), reference = diab.test$Outcome)
 
 #Confusion matrix of partial least squares discriminant analysis
-b=confusionMatrix(data = predict(plsdaTune, diabTestTrans), reference = diabTestTrans$Outcome)
+b=confusionMatrix(data = predict(plsdaTune, diab.test), reference = diab.test$Outcome)
 
 #Confusion matrix of SVM
-c=confusionMatrix(data = predict(svmRTune, diabTestTrans[,1:8]), reference = diabTestTrans$Outcome)
+c=confusionMatrix(data = predict(svmRTune, diab.test[,1:8]), reference = diab.test$Outcome)
 
 #Confusion matrix of Random Forest
-d=confusionMatrix(data = predict(rfTune, diabTestTrans), reference = diabTestTrans$Outcome)
+d=confusionMatrix(data = predict(rfTune, diab.test), reference = diab.test$Outcome)
 
 # put results of confusion matrix into a df
-results2 <- cbind(data.frame(logistic = c(a$overall[1:2], a$byClass[1:2])),
+results <- cbind(data.frame(logistic = c(a$overall[1:2], a$byClass[1:2])),
                  data.frame(plsda = c(b$overall[1:2], b$byClass[1:2])),
                  data.frame(svmR = c(c$overall[1:2], c$byClass[1:2])),
                  data.frame(rf = c(d$overall[1:2], d$byClass[1:2])))
 
 # transpose df
-(results2=t(results2))
+(results=t(results))
 
 
 #We can add the models from chapter 12
