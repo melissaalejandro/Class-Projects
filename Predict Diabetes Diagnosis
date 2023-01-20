@@ -20,7 +20,7 @@ diabetes0 = read.csv("https://raw.githubusercontent.com/melissaalejandro/Class-P
 # level (mu U/ml), body mass index, diabetes pedigree function, and age.  The Target variable is labeled as 'Outcome' where 0 means 'no' (does not 
 # have diabetes) & 1 means yes (does have diabetes). The data consists of all females, age 21 and older who are of Pima Indian heritage. 
 
-
+# Summary statistics
 summary(diabetes0)
 
 # check the number of 0's in each column
