@@ -17,7 +17,8 @@ diabetes0 = read.csv("https://raw.githubusercontent.com/melissaalejandro/Class-P
 # Data Overview  ----
 # ====================================================
 
-# Predictors include number of pregnancies, glucose, Diastolic blood pressure (mm HG), skin fold thickness on triceps (mm), 2 hour serum insulin level (mu U/ml), body mass index, diabetes pedigree function, and age.  The Target variable is labeled as 'Outcome' where 0 means 'no' (does not have diabetes) & 1 means yes (does have diabetes). The data consists of all females, age 21 and older who are of Pima Indian heritage. 
+# Predictors include number of pregnancies, glucose, Diastolic blood pressure (mm HG), skin fold thickness on triceps (mm), 2 hour serum insulin level
+# (mu U/ml), body mass index, diabetes pedigree function, and age.  The Target variable is labeled as 'Outcome' where 0 means 'no' (does not have diabetes) & 1 means yes (does have diabetes). The data consists of all females, age 21 and older who are of Pima Indian heritage. 
 
 # Summary statistics
 summary(diabetes0)
@@ -27,7 +28,8 @@ cbind(lapply(colSums(diabetes0[1:8] == 0), sum))
 
 ## Filtering the data
 
-# The variables BMI, Insulin, SkinThickness, BloodPressure, and Glucose have minimum values of zero. It's important to note that there are certain medical conditions where diastolic blood pressure, insulin levels, and glucose levels can be at zero. However, cases where a patient has a 0 BMI or 0 mm of skin thickness are extremely unlikely. Therefore, any rows with zeroes in SkinThickness and BMI will be removed. 
+# The variables BMI, Insulin, SkinThickness, BloodPressure, and Glucose have minimum values of zero. It's important to note that there are certain 
+# medical conditions where diastolic blood pressure, insulin levels, and glucose levels can be at zero. However, cases where a patient has a 0 BMI or 0 mm of skin thickness are extremely unlikely. Therefore, any rows with zeroes in SkinThickness and BMI will be removed. 
 
 # keep only rows where bmi and skin thickness are >0
 diabetes = diabetes0 %>% 
@@ -62,15 +64,16 @@ for (i in 1:8) {
   hist(diabetes[ ,i], xlab = names(diabetes[i]), main = paste(names(diabetes[i]), "Histogram"), col="deepskyblue")  
 }
 
+
+# ====================================================
+# Build the Model ----
+# ====================================================
+
 ## Change label names
 ##### Label 0 -> No and 1 -> Yes #####
 diabetes0$Outcome[diabetes0$Outcome==0] = "No"
 diabetes0$Outcome[diabetes0$Outcome==1] = "Yes"
 diabetes0$Outcome = as.factor(diabetes0$Outcome)
-
-# ====================================================
-# Build the Model ----
-# ====================================================
 
 # split data 
 set.seed(100)
